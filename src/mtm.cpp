@@ -19,11 +19,15 @@ class ThreadPool{
     
     void WorkerLoop(){
         Task currentTask;
-        currentTask = taskQeueu.front();
-
-        currentTask.task();
-
+        while(1){    
+            if(!taskQeueu.empty()){
+                currentTask = taskQeueu.front();
+                break;
+            }
+        }
+        
         taskQeueu.pop();
+        currentTask.task();
     }
 
     private:
@@ -34,31 +38,40 @@ class ThreadPool{
     public:
         void AddTaskToQueue(Task task){
             taskQeueu.push(task);
+            SendTaskToWorker();
+        }
+
+        ~ThreadPool(){
+            for(size_t i = 0; i < workers.size(); i++)
+                workers[i].join();
         }
 };
 
-void ComputePrimes(size_t end){
+void ComputePrimes(size_t end, int id){
     std::vector<int> primes;
     for(size_t i = 2; i < end; i++){
         int isPrime = 1;
         for(size_t j = i; j > 0; j--)
             if(i%j == 0 && i != j && j != 1)
                 isPrime = 0;
-        if(isPrime)
+        if(isPrime){
             primes.push_back(i);
+            std::cout << "Primes " << id << ": " << i << "\n";
+        }
     }
-
-    for(int i = 0; i < primes.size(); i++)
-        std::cout << primes[i] << "\n";
 }
 
 int main(){
     ThreadPool pool;
 
     Task primes_one;
-    primes_one.task = [](){ ComputePrimes(1000);};
+    primes_one.task = [](){ComputePrimes(10000,1);};
+
+    Task primes_two;
+    primes_two.task = [](){ComputePrimes(10000,2);};
 
     pool.AddTaskToQueue(primes_one);
+    pool.AddTaskToQueue(primes_two);
     
     return 0;
 }
