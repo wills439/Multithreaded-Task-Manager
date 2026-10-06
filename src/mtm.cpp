@@ -3,6 +3,8 @@
 #include<thread>
 #include<queue>
 #include<functional>
+#include<mutex>
+#include<condition_variable>
 
 enum class Status{Pending, Complete, Active};
 enum class Priority{Low, Medium, High};
@@ -16,17 +18,15 @@ struct Task{
 class ThreadPool{
     std::vector<std::thread> workers;
     std::queue<Task> taskQeueu;
-    
+    std::mutex queueMtx;
     void WorkerLoop(){
         Task currentTask;
-        while(1){    
-            if(!taskQeueu.empty()){
-                currentTask = taskQeueu.front();
-                break;
-            }
+        {
+            std::lock_guard<std::mutex>guard(queueMtx);
+            currentTask = taskQeueu.front();
+            taskQeueu.pop();
         }
         
-        taskQeueu.pop();
         currentTask.task();
     }
 
@@ -37,6 +37,7 @@ class ThreadPool{
 
     public:
         void AddTaskToQueue(Task task){
+            std::lock_guard<std::mutex>guard(queueMtx);
             taskQeueu.push(task);
             SendTaskToWorker();
         }
