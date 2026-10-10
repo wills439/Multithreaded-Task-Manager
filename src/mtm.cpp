@@ -6,13 +6,8 @@
 #include<mutex>
 #include<condition_variable>
 
-enum class Status{Pending, Complete, Active};
-enum class Priority{Low, Medium, High};
-
 struct Task{
     std::function<void()> task;
-    Status taskStatus = Status::Pending;
-    Priority taskPriority;
 };
 
 class ThreadPool{
@@ -51,8 +46,10 @@ class ThreadPool{
         }
 
         ~ThreadPool(){
-            std::lock_guard<std::mutex> guard(mtx);
-            stop = true;
+            {
+                std::lock_guard<std::mutex> guard(mtx);
+                stop = true;
+            }
             cv.notify_all();
             for(size_t i = 0; i < workers.size(); i++)
                 workers[i].join();
