@@ -56,6 +56,7 @@ class ThreadPool{
         }
 };
 
+//intentional o(n) prime computation algorithm
 void ComputePrimes(size_t end){
     std::vector<int> primes;
     for(size_t i = 2; i < end; i++){
