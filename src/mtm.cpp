@@ -18,20 +18,24 @@ struct Task{
 class ThreadPool{
     std::vector<std::thread> workers;
     std::queue<Task> taskQeueu;
-    std::mutex queueMtx;
+    std::mutex mtx;
+    std::condition_variable cv;
+    bool stop = false;
     void WorkerLoop(){
-        Task currentTask;
-        {
-            std::lock_guard<std::mutex>guard(queueMtx);
-            while(1){
-                if(!taskQeueu.empty()){
-                    currentTask = taskQeueu.front();
-                    taskQeueu.pop();
-                }
+        while(1){
+            Task currentTask;
+            {
+                std::unique_lock<std::mutex>guard(mtx);
+                cv.wait(guard, [this]{return !taskQeueu.empty() || stop;});
+                
+                if(stop && taskQeueu.empty())
+                    return;
+                
+                currentTask = taskQeueu.front();    
+                taskQeueu.pop();
             }    
+            currentTask.task();
         }
-        
-        currentTask.task();
     }
 
     public:
@@ -41,11 +45,15 @@ class ThreadPool{
         }
     
         void AddTaskToQueue(Task task){
-            std::lock_guard<std::mutex>guard(queueMtx);
+            std::lock_guard<std::mutex>guard(mtx);
             taskQeueu.push(task);
+            cv.notify_one();
         }
 
         ~ThreadPool(){
+            std::lock_guard<std::mutex> guard(mtx);
+            stop = true;
+            cv.notify_all();
             for(size_t i = 0; i < workers.size(); i++)
                 workers[i].join();
         }
